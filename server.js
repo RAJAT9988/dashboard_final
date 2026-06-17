@@ -1,6 +1,8 @@
 const express = require('express');
 const path = require('path');
 const os = require('os');
+const fs = require('fs');
+const { execSync } = require('child_process');
 
 const { getMeshcentralUrl, offlineLoginEnabled, singleUserPerDevice } = require('./lib/device-config');
 const { proxyJson, checkHealth, isNetworkError } = require('./lib/meshcentral-client');
@@ -114,6 +116,128 @@ async function isAtomicCenterOnline() {
   }
 }
 
+function safeReadText(filePath) {
+  try {
+    return fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+function readCpuPercentApprox() {
+  // Approximation: 1-min load normalized by CPU cores.
+  const cores = os.cpus()?.length || 1;
+  const load1 = os.loadavg?.()[0] || 0;
+  const pct = Math.round(Math.min(1, load1 / Math.max(1, cores)) * 100);
+  return { percent: pct, load1, cores };
+}
+
+function readRamPercent() {
+  const total = os.totalmem();
+  const free = os.freemem();
+  const used = Math.max(0, total - free);
+  const percent = total > 0 ? Math.round((used / total) * 100) : null;
+  return { percent, totalBytes: total, usedBytes: used };
+}
+
+function readRootDiskPercent() {
+  try {
+    const out = execSync('df -P /', { encoding: 'utf8' }).trim().split('\n');
+    // Filesystem 1024-blocks Used Available Capacity Mounted on
+    const parts = out[out.length - 1].trim().split(/\s+/);
+    const cap = parts[4] || '';
+    const percent = cap.endsWith('%') ? parseInt(cap.slice(0, -1), 10) : null;
+    return { percent };
+  } catch {
+    return { percent: null };
+  }
+}
+
+let lastNetSample = null;
+function readNetworkUsage() {
+  const raw = safeReadText('/proc/net/dev');
+  if (!raw) return { rxBps: null, txBps: null };
+  const lines = raw.split('\n').slice(2).filter(Boolean);
+  let rx = 0;
+  let tx = 0;
+  for (const line of lines) {
+    const [ifacePart, rest] = line.split(':');
+    const iface = String(ifacePart || '').trim();
+    if (!iface || iface === 'lo') continue;
+    const cols = String(rest || '').trim().split(/\s+/);
+    const rxBytes = parseInt(cols[0] || '0', 10);
+    const txBytes = parseInt(cols[8] || '0', 10);
+    if (!Number.isNaN(rxBytes)) rx += rxBytes;
+    if (!Number.isNaN(txBytes)) tx += txBytes;
+  }
+  const now = Date.now();
+  let rxBps = null;
+  let txBps = null;
+  if (lastNetSample) {
+    const dt = (now - lastNetSample.t) / 1000;
+    if (dt > 0.2) {
+      rxBps = Math.max(0, (rx - lastNetSample.rx) / dt);
+      txBps = Math.max(0, (tx - lastNetSample.tx) / dt);
+    }
+  }
+  lastNetSample = { t: now, rx, tx };
+  return { rxBps, txBps };
+}
+
+function readDeviceTemperatureC() {
+  const candidates = [
+    '/sys/class/thermal/thermal_zone0/temp',
+    '/sys/class/thermal/thermal_zone1/temp',
+  ];
+  for (const p of candidates) {
+    const t = safeReadText(p);
+    if (!t) continue;
+    const v = parseInt(String(t).trim(), 10);
+    if (!Number.isFinite(v)) continue;
+    // Many systems expose millidegrees C.
+    if (v > 1000) return Math.round((v / 1000) * 10) / 10;
+    return Math.round(v * 10) / 10;
+  }
+  return null;
+}
+
+function readPowerStatus() {
+  // Best-effort on Linux (may be absent on servers).
+  const base = '/sys/class/power_supply';
+  try {
+    const entries = fs.readdirSync(base, { withFileTypes: true }).filter((d) => d.isDirectory());
+    const battery = entries.find((e) => e.name.toLowerCase().includes('bat'));
+    if (!battery) return { status: 'unknown' };
+    const status = safeReadText(path.join(base, battery.name, 'status'));
+    const capacity = safeReadText(path.join(base, battery.name, 'capacity'));
+    return {
+      status: status ? String(status).trim().toLowerCase() : 'unknown',
+      batteryPercent: capacity ? parseInt(String(capacity).trim(), 10) : null,
+    };
+  } catch {
+    return { status: 'unknown' };
+  }
+}
+
+function readFirmwareVersion() {
+  const osRelease = safeReadText('/etc/os-release') || '';
+  const pretty = osRelease
+    .split('\n')
+    .find((l) => l.startsWith('PRETTY_NAME='));
+  if (pretty) return pretty.split('=').slice(1).join('=').replace(/^\"|\"$/g, '');
+  return `${os.type()} ${os.release()}`;
+}
+
+function readSyncStatus() {
+  const online = meshcentralStatus.getReachable();
+  const pending = cloudSync.getPendingCount();
+  return {
+    online,
+    pendingQueue: pending,
+    status: online ? (pending > 0 ? 'sync_pending' : 'synced') : 'offline',
+  };
+}
+
 async function requireOnlineForSignup(res) {
   if (await isAtomicCenterOnline()) return true;
   res.status(503).json({ error: SIGNUP_OFFLINE_ERROR });
@@ -222,6 +346,56 @@ app.get('/api/device/profile', (_req, res) => {
     deviceId: deviceBinding.getDeviceId(),
     deviceSerial: deviceBinding.getDeviceSerial(),
     meshcentralUrl,
+  });
+});
+
+app.get('/api/dashboard/stats', async (req, res) => {
+  const sess = resolveSession(req);
+  if (!sess) return res.status(401).json({ error: 'Not authenticated.' });
+
+  const profile = deviceProfile.getProfile();
+  const cpu = readCpuPercentApprox();
+  const ram = readRamPercent();
+  const disk = readRootDiskPercent();
+  const net = readNetworkUsage();
+  const tempC = readDeviceTemperatureC();
+  const sync = readSyncStatus();
+  const power = readPowerStatus();
+
+  // Placeholders for data sources not yet wired (cameras, AI models, alerts).
+  res.json({
+    ok: true,
+    updatedAt: Date.now(),
+    cameras: { total: 0, active: 0, offline: 0 },
+    ai: { modelsRunning: 0 },
+    alerts: { today: 0, critical: 0 },
+    device: {
+      role: 'master',
+      masterSlave: 'master',
+      uptimeSeconds: Math.floor(os.uptime()),
+      temperatureC: tempC,
+      firmwareVersion: readFirmwareVersion(),
+      licenseStatus: 'unknown',
+      power,
+    },
+    atomicCenter: {
+      syncStatus: sync.status,
+      online: sync.online,
+      pendingQueue: sync.pendingQueue,
+      url: meshcentralUrl,
+    },
+    resources: {
+      cpu: { percent: cpu.percent, load1: cpu.load1, cores: cpu.cores },
+      npu: { percent: null },
+      ram: { percent: ram.percent, usedBytes: ram.usedBytes, totalBytes: ram.totalBytes },
+      storage: { percent: disk.percent },
+      network: { rxBps: net.rxBps, txBps: net.txBps },
+    },
+    registration: {
+      deviceSerial: profile?.deviceSerial || deviceBinding.getDeviceSerial(),
+      deviceGroup: profile?.meshGroupName || null,
+      registeredBy: profile?.registeredBy || null,
+    },
   });
 });
 

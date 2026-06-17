@@ -1,165 +1,300 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0c0e12">
-  <title>Dashboard — Atomo Forge</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0A0E13">
+<title>Command Deck — Atomo Forge Electron</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/dashboard.css">
 </head>
-<body class="dashboard-body">
-  <div class="dashboard-shell">
-    <header class="dashboard-topbar">
-      <div class="dashboard-brand">
-        <div class="logo logo-sm" aria-hidden="true"><span class="logo-core"></span></div>
-        <div>
-          <span>Atomo Forge</span>
-          <p class="dashboard-product-line">Powered by <a href="https://atomo.in" target="_blank" rel="noopener noreferrer">Atomo Innovation</a> · Electron</p>
-        </div>
+<body>
+<div class="deck">
+
+  <!-- ============ SIDE RAIL ============ -->
+  <aside class="rail">
+    <div class="rail-brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 40 40" fill="none">
+          <circle cx="20" cy="20" r="3.2" fill="currentColor"/>
+          <ellipse cx="20" cy="20" rx="17" ry="7" stroke="currentColor" stroke-width="1.6"/>
+          <ellipse cx="20" cy="20" rx="17" ry="7" stroke="currentColor" stroke-width="1.6" transform="rotate(60 20 20)"/>
+          <ellipse cx="20" cy="20" rx="17" ry="7" stroke="currentColor" stroke-width="1.6" transform="rotate(120 20 20)"/>
+        </svg>
+      </span>
+      <div class="brand-text">
+        <span class="brand-name">ATOMO FORGE</span>
+        <span class="brand-sub">ELECTRON · EDGE AI</span>
       </div>
-      <div class="dashboard-user">
-        <span id="userLabel">Loading…</span>
-        <button type="button" class="btn btn-ghost" id="logoutBtn">Sign out</button>
+    </div>
+
+    <nav class="rail-nav" aria-label="Primary">
+      <button class="rail-link is-active" data-tab="overview" data-accent="cyan">
+        <svg class="rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7.5" height="9" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="5.5" rx="1.5"/><rect x="13.5" y="11" width="7.5" height="10" rx="1.5"/><rect x="3" y="15" width="7.5" height="6" rx="1.5"/></svg>
+        <span>Overview</span>
+      </button>
+      <button class="rail-link" data-tab="person" data-accent="violet">
+        <svg class="rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6.2 7-6.2s7 2.6 7 6.2"/></svg>
+        <span>Person</span>
+      </button>
+      <button class="rail-link" data-tab="fire" data-accent="amber">
+        <svg class="rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2.5c1 3 4.5 5 4.5 9.6a4.5 4.5 0 1 1-9 0c0-1.6.7-2.7 1.4-3.6.2 1 .9 1.7 1.6 1.7-.3-2.4 1-3.8 1.5-7.7z"/></svg>
+        <span>Fire &amp; Smoke</span>
+      </button>
+      <button class="rail-link" data-tab="safety" data-accent="green">
+        <svg class="rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l7 3v5.5c0 5-3 8.7-7 9.5-4-.8-7-4.5-7-9.5V6l7-3z"/><path d="M9 12l2.2 2.2L15.5 9.5"/></svg>
+        <span>Safety</span>
+      </button>
+      <button class="rail-link" data-tab="face" data-accent="cyan">
+        <svg class="rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="9" cy="11" r=".6" fill="currentColor"/><circle cx="15" cy="11" r=".6" fill="currentColor"/><path d="M9 15c1 1 5 1 6 0"/></svg>
+        <span>Face Recognition</span>
+      </button>
+      <button class="rail-link" data-tab="models" data-accent="violet">
+        <svg class="rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="7" y="7" width="10" height="10" rx="1.4"/><path d="M12 2v3.2M12 18.8V22M2 12h3.2M18.8 12H22M4.6 4.6l2.2 2.2M17.2 17.2l2.2 2.2M19.4 4.6l-2.2 2.2M6.8 17.2l-2.2 2.2"/></svg>
+        <span>AI Models</span>
+      </button>
+      <button class="rail-link" data-tab="settings" data-accent="">
+        <svg class="rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V20a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.6V2a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1c.2.7.8 1.2 1.6 1.3h.1a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <div class="rail-foot">
+      <div class="operator">
+        <span class="operator-avatar" id="operatorAvatar">—</span>
+        <span class="operator-meta">
+          <span class="operator-name" id="userLabel">Operator</span>
+          <span class="operator-role">Site administrator</span>
+        </span>
+      </div>
+      <button class="rail-exit" id="logoutBtn" title="Sign out" aria-label="Sign out">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN COLUMN ============ -->
+  <div class="deck-main">
+
+    <!-- Top bar -->
+    <header class="scope-bar">
+      <div class="scope-overlay">
+        <div class="scope-id">
+          <span class="scope-eyebrow" id="pageEyebrow">Live overview</span>
+          <h1 class="scope-title" id="pageTitle">Command Deck</h1>
+        </div>
+        <div class="scope-readouts" id="scopeReadouts" role="group" aria-label="System telemetry">
+          <div class="readout" data-accent="violet"><span class="readout-label">NPU</span><span class="readout-value" id="rNpu">—</span></div>
+          <div class="readout" data-accent="cyan"><span class="readout-label">CPU</span><span class="readout-value" id="rCpu">—</span></div>
+          <div class="readout" data-accent="cyan"><span class="readout-label">RAM</span><span class="readout-value" id="rRam">—</span></div>
+          <div class="readout" data-accent="green"><span class="readout-label">Storage</span><span class="readout-value" id="rStorage">—</span></div>
+          <div class="readout" data-accent="amber"><span class="readout-label">Temp</span><span class="readout-value" id="rTemp">—</span></div>
+          <div class="readout" data-accent="muted"><span class="readout-label">Uptime</span><span class="readout-value" id="rUptime">—</span></div>
+          <div class="readout" data-accent="cyan"><span class="readout-label">Network</span><span class="readout-value" id="rNetwork">—</span></div>
+          <div class="readout" data-accent="green"><span class="readout-label">Power</span><span class="readout-value" id="rPower">—</span></div>
+        </div>
+        <div class="scope-actions">
+          <span class="live-pill"><span class="live-dot"></span>Live</span>
+          <button type="button" class="ghost-btn" id="themeToggle" title="Toggle theme">
+            <span id="themeIcon" aria-hidden="true"></span>
+          </button>
+          <a href="#" id="atomicCenterLink" class="ghost-btn" target="_blank" rel="noopener noreferrer">Atomic Center ↗</a>
+          <button type="button" class="solid-btn" id="syncCloudBtn">Sync to AWS</button>
+        </div>
       </div>
     </header>
 
-    <main class="dashboard-main">
-      <p class="step-label">STEP 3 OF 3 — COMPLETE</p>
-      <h1 id="welcomeTitle">Welcome</h1>
-      <p class="dashboard-lead">Your Electron edge device is registered and connected to Atomic Center. Fleet management and slave devices will appear here.</p>
+    <main class="floor">
 
-      <div class="dashboard-grid">
-        <section class="dashboard-card dashboard-card-highlight">
-          <p class="card-label"><span class="status-dot" aria-hidden="true"></span>Master device</p>
-          <h2 id="deviceName">—</h2>
-          <p class="card-meta" id="deviceSerial">Serial —</p>
-          <p class="card-meta" id="deviceTypeLine" style="margin-top:0.5rem">Electron · Industrial IoT</p>
+      <!-- ===== OVERVIEW PANEL ===== -->
+      <section class="panel" id="panel-overview">
+
+        <section class="row row-identity">
+          <article class="id-card">
+            <p class="id-eyebrow"><span class="status-dot" aria-hidden="true"></span>Device</p>
+            <h2 id="deviceName">—</h2>
+            <p class="id-meta" id="deviceSerial">Serial —</p>
+            <p class="id-meta id-meta-faint" id="deviceType">Electron · Industrial IoT</p>
+          </article>
+          <article class="id-card">
+            <p class="id-eyebrow">Deployment site</p>
+            <h2 id="orgName">—</h2>
+            <p class="id-meta" id="orgLocation">—</p>
+          </article>
+          <article class="id-card">
+            <p class="id-eyebrow">Device role</p>
+            <h2 id="roleValue">—</h2>
+            <p class="id-meta">Master / slave: <span id="roleSub">—</span></p>
+          </article>
         </section>
 
-        <section class="dashboard-card">
-          <p class="card-label">Organization</p>
-          <h2 id="orgName">—</h2>
-          <p class="card-meta" id="orgLocation">—</p>
+        <section class="row row-gauges">
+
+          <article class="gauge-card">
+            <header class="gauge-head">
+              <div><p class="gauge-label">Cameras</p><p class="gauge-sub">Fleet status</p></div>
+            </header>
+            <div class="gauge-body">
+              <canvas id="camerasDonut" width="120" height="120"></canvas>
+            </div>
+            <ul class="gauge-tags">
+              <li><span class="tag-dot" data-accent="muted"></span>Total <b id="camTotal">—</b></li>
+              <li><span class="tag-dot" data-accent="cyan"></span>Active <b id="camActive">—</b></li>
+              <li><span class="tag-dot" data-accent="red"></span>Offline <b id="camOffline">—</b></li>
+            </ul>
+          </article>
+
+          <article class="gauge-card">
+            <header class="gauge-head">
+              <div><p class="gauge-label">AI models</p><p class="gauge-sub">Inference engines</p></div>
+            </header>
+            <div class="gauge-body">
+              <canvas id="aiDonut" width="120" height="120"></canvas>
+            </div>
+            <ul class="model-chips" id="modelChips">
+              <li class="chip" data-model="person" data-accent="violet">Person</li>
+              <li class="chip" data-model="fire" data-accent="amber">Fire &amp; smoke</li>
+              <li class="chip" data-model="face" data-accent="cyan">Face match</li>
+              <li class="chip" data-model="safety" data-accent="green">Safety</li>
+            </ul>
+          </article>
+
+          <article class="gauge-card">
+            <header class="gauge-head">
+              <div><p class="gauge-label">Alerts</p><p class="gauge-sub">Last 24 hours</p></div>
+              <span class="crit-badge" id="alertsCriticalBadge">— critical</span>
+            </header>
+            <div class="alert-figure">
+              <span class="alert-number" id="alertsToday">—</span>
+              <span class="alert-unit">today</span>
+            </div>
+            <div class="sparkline" id="alertSparkline" aria-hidden="true"></div>
+            <ul class="legend-row">
+              <li><span class="tag-dot" data-accent="red"></span>Critical <b id="alertsCritical">—</b></li>
+              <li><span class="tag-dot" data-accent="amber"></span>Warning <b id="alertsWarning">—</b></li>
+              <li><span class="tag-dot" data-accent="muted"></span>Info <b id="alertsInfo">—</b></li>
+            </ul>
+          </article>
+
+          <article class="gauge-card">
+            <header class="gauge-head">
+              <div><p class="gauge-label">Atomic Center</p><p class="gauge-sub">Mesh sync</p></div>
+              <span class="sync-chip" id="atomicStatusChip">—</span>
+            </header>
+            <ul class="kv-list">
+              <li><span>Pending queue</span><b id="atomicQueue">—</b></li>
+              <li><span>Mesh online</span><b id="atomicOnline">—</b></li>
+              <li><span>Last sync</span><b id="atomicLastSync">—</b></li>
+            </ul>
+            <button class="ghost-btn ghost-btn-block" id="forceSyncBtn">Force sync now</button>
+          </article>
+
         </section>
 
-        <section class="dashboard-card dashboard-card-empty">
-          <div class="empty-icon" aria-hidden="true">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <section class="row row-charts">
+          <article class="chart-card chart-card-wide">
+            <header class="chart-head">
+              <div><p class="chart-title">System utilization</p><p class="chart-sub">CPU · RAM · Storage — rolling 5 min</p></div>
+              <ul class="legend-row">
+                <li><span class="tag-dot" data-accent="cyan"></span>CPU</li>
+                <li><span class="tag-dot" data-accent="violet"></span>RAM</li>
+                <li><span class="tag-dot" data-accent="green"></span>Storage</li>
+              </ul>
+            </header>
+            <div class="chart-canvas-wrap chart-canvas-tall"><canvas id="utilChart"></canvas></div>
+          </article>
+
+          <div class="chart-stack">
+            <article class="chart-card">
+              <header class="chart-head">
+                <div><p class="chart-title">Compute load</p><p class="chart-sub">NPU vs CPU</p></div>
+              </header>
+              <div class="dual-dial">
+                <div class="dial-wrap"><canvas id="npuDial" width="92" height="92"></canvas><span class="dial-tag" data-accent="violet">NPU</span></div>
+                <div class="dial-wrap"><canvas id="cpuDial" width="92" height="92"></canvas><span class="dial-tag" data-accent="cyan">CPU</span></div>
+              </div>
+            </article>
+            <article class="chart-card">
+              <header class="chart-head">
+                <div><p class="chart-title">Network</p><p class="chart-sub">Rx / Tx throughput</p></div>
+                <ul class="legend-row">
+                  <li><span class="tag-dot" data-accent="amber"></span>Rx</li>
+                  <li><span class="tag-dot" data-accent="red"></span>Tx</li>
+                </ul>
+              </header>
+              <div class="chart-canvas-wrap"><canvas id="netChart"></canvas></div>
+            </article>
           </div>
-          <h2>Fleet &amp; slave devices</h2>
-          <p>Master–slave topology, live status, and remote control will be available in this panel.</p>
         </section>
-      </div>
 
-      <div class="dashboard-actions">
-        <a href="#" id="atomicCenterLink" class="btn btn-secondary btn-inline" target="_blank" rel="noopener noreferrer">Open Atomic Center</a>
-        <button type="button" id="syncAwsBtn" class="btn btn-secondary btn-inline">Sync to AWS</button>
-        <a href="https://atomo.in/electron" class="btn btn-secondary btn-inline" target="_blank" rel="noopener noreferrer">Electron specs</a>
-      </div>
+        <section class="row row-log">
+          <article class="log-card">
+            <header class="chart-head">
+              <div><p class="chart-title">Detection log</p><p class="chart-sub">Latest inferences across active models</p></div>
+              <span class="live-pill live-pill-quiet"><span class="live-dot"></span>Streaming</span>
+            </header>
+            <div class="log-table" id="detectionLog">
+              <div class="log-row log-row-head">
+                <span>Time</span><span>Model</span><span>Zone / camera</span><span>Detail</span><span>Confidence</span>
+              </div>
+            </div>
+          </article>
+        </section>
 
-      <p class="site-footer-mini">
-        <a href="https://atomo.in" target="_blank" rel="noopener noreferrer">atomo.in</a> · Intelligent Edge Devices
-      </p>
+      </section>
+
+      <!-- ===== PLACEHOLDER PANELS ===== -->
+      <section class="panel panel-stub is-hidden" id="panel-person" data-accent="violet">
+        <div class="stub-card">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6.2 7-6.2s7 2.6 7 6.2"/></svg>
+          <h2>Person detection module</h2>
+          <p>Zone-level occupancy, loitering and intrusion analytics for this device will surface here once the model feed is wired in.</p>
+        </div>
+      </section>
+      <section class="panel panel-stub is-hidden" id="panel-fire" data-accent="amber">
+        <div class="stub-card">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2.5c1 3 4.5 5 4.5 9.6a4.5 4.5 0 1 1-9 0c0-1.6.7-2.7 1.4-3.6.2 1 .9 1.7 1.6 1.7-.3-2.4 1-3.8 1.5-7.7z"/></svg>
+          <h2>Fire &amp; smoke module</h2>
+          <p>Thermal and visual smoke signatures from every connected camera will be tracked here in real time.</p>
+        </div>
+      </section>
+      <section class="panel panel-stub is-hidden" id="panel-safety" data-accent="green">
+        <div class="stub-card">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l7 3v5.5c0 5-3 8.7-7 9.5-4-.8-7-4.5-7-9.5V6l7-3z"/><path d="M9 12l2.2 2.2L15.5 9.5"/></svg>
+          <h2>Safety compliance module</h2>
+          <p>PPE checks and restricted-zone violations across your site will be logged and scored on this tab.</p>
+        </div>
+      </section>
+      <section class="panel panel-stub is-hidden" id="panel-face" data-accent="cyan">
+        <div class="stub-card">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="9" cy="11" r=".6" fill="currentColor"/><circle cx="15" cy="11" r=".6" fill="currentColor"/><path d="M9 15c1 1 5 1 6 0"/></svg>
+          <h2>Face recognition module</h2>
+          <p>Enrolled identities and match confidence from the watchlist will be reviewed here.</p>
+        </div>
+      </section>
+      <section class="panel panel-stub is-hidden" id="panel-models" data-accent="violet">
+        <div class="stub-card">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="7" y="7" width="10" height="10" rx="1.4"/><path d="M12 2v3.2M12 18.8V22M2 12h3.2M18.8 12H22"/></svg>
+          <h2>AI models</h2>
+          <p>Manage which inference engines run on this Electron unit, their versions and NPU allocation.</p>
+        </div>
+      </section>
+      <section class="panel panel-stub is-hidden" id="panel-settings" data-accent="">
+        <div class="stub-card">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .3 1.9"/></svg>
+          <h2>Settings</h2>
+          <p>Device, network and account preferences for this Electron unit will live on this tab.</p>
+        </div>
+      </section>
+
+      <p class="floor-foot"><a href="https://atomo.in" target="_blank" rel="noopener noreferrer">atomo.in</a> · Intelligent Edge Devices</p>
     </main>
   </div>
+</div>
 
-  <script>
-    const logoutBtn = document.getElementById('logoutBtn');
-    const syncAwsBtn = document.getElementById('syncAwsBtn');
-    let sessionId = sessionStorage.getItem('atomoSessionId');
-
-    async function loadDashboard() {
-      const url = sessionId
-        ? `/api/session?sessionId=${encodeURIComponent(sessionId)}`
-        : '/api/session';
-
-      const res = await fetch(url);
-      const data = await res.json();
-
-      if (!data.authenticated) {
-        sessionStorage.removeItem('atomoSessionId');
-        window.location.href = '/login';
-        return;
-      }
-
-      if (!data.onboardingComplete) {
-        window.location.href = '/device-registration';
-        return;
-      }
-
-      if (data.sessionId) {
-        sessionId = data.sessionId;
-        sessionStorage.setItem('atomoSessionId', data.sessionId);
-      }
-
-      document.getElementById('userLabel').textContent = data.username;
-      document.getElementById('welcomeTitle').textContent = `Welcome, ${data.username}`;
-
-      const profile = data.profile;
-      if (profile) {
-        document.getElementById('deviceName').textContent = profile.deviceName || 'Registered device';
-        document.getElementById('deviceSerial').textContent = profile.deviceSerial
-          ? `Serial ${profile.deviceSerial}`
-          : 'Serial not set';
-        document.getElementById('orgName').textContent = profile.organizationName || '—';
-        document.getElementById('orgLocation').textContent =
-          [profile.city, profile.country].filter(Boolean).join(', ') || '—';
-        const typeLine = document.getElementById('deviceTypeLine');
-        if (typeLine && profile.deviceType) {
-          const label = profile.deviceType.replace(/-/g, ' ');
-          typeLine.textContent = `Electron · ${label.charAt(0).toUpperCase() + label.slice(1)}`;
-        }
-      }
-
-      try {
-        const cfg = await fetch('/api/device/profile').then((r) => r.json());
-        if (cfg.meshcentralUrl) {
-          document.getElementById('atomicCenterLink').href = cfg.meshcentralUrl;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-
-    logoutBtn.addEventListener('click', async () => {
-      if (sessionId) {
-        await fetch('/api/logout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId }),
-        });
-      }
-      sessionStorage.removeItem('atomoSessionId');
-      window.location.href = '/login';
-    });
-
-    syncAwsBtn.addEventListener('click', async () => {
-      try {
-        syncAwsBtn.disabled = true;
-        syncAwsBtn.textContent = 'Syncing…';
-        const res = await fetch('/api/device/cloud-sync/enqueue-current', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          alert(data.error || 'Sync failed.');
-          return;
-        }
-        alert(data.message || 'Sync requested.');
-      } catch {
-        alert('Sync failed.');
-      } finally {
-        syncAwsBtn.disabled = false;
-        syncAwsBtn.textContent = 'Sync to AWS';
-      }
-    });
-
-    loadDashboard();
-  </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="/js/dashboard.js"></script>
 </body>
 </html>
