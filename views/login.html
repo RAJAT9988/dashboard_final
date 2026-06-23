@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0c0e12">
   <title>Sign In — Atomo Forge</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!--AF_LOGIN_BOOT-->
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="auth-body">
@@ -35,6 +33,10 @@
           <label for="password">Password</label>
           <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" required>
         </div>
+
+        <p class="auth-inline-link">
+          <a href="/forgot-password" id="forgotPasswordLink">Forgot password?</a>
+        </p>
 
         <button type="submit" class="btn btn-primary" id="loginBtn">Sign In</button>
       </form>
@@ -89,42 +91,60 @@
       }
     }
 
+    function applyDeviceStatus(data) {
+      const online = data.online === true;
+      const boundUser = data.boundUser?.username;
+
+      if (online) {
+        deviceHint.textContent = boundUser
+          ? `Online — connected to Atomic Center. Any account can sign in. Offline access is for ${boundUser}.`
+          : 'Online — connected to Atomic Center. Sign in with any Atomo Forge account.';
+        deviceBanner.textContent = 'Connected to Atomic Center (AWS). All registered users can sign in.';
+        deviceBanner.className = 'alert alert-success visible';
+        setUsernameLocked(false);
+        setSignupLinkVisible(true);
+        document.getElementById('forgotPasswordLink')?.classList.remove('hidden');
+        loginBtn.disabled = false;
+        return;
+      }
+
+      setSignupLinkVisible(false);
+      if (data.bound && boundUser) {
+        document.getElementById('forgotPasswordLink')?.classList.remove('hidden');
+      } else {
+        document.getElementById('forgotPasswordLink')?.classList.add('hidden');
+      }
+
+      if (data.bound && boundUser) {
+        usernameInput.value = boundUser;
+        setUsernameLocked(true);
+        deviceHint.textContent = `Offline — only ${boundUser} can sign in on this device.`;
+        deviceBanner.textContent = `No connection to Atomic Center. Only ${boundUser} can sign in (saved on this device).`;
+        deviceBanner.className = 'alert alert-error visible';
+        loginBtn.disabled = false;
+        return;
+      }
+
+      deviceHint.textContent = 'Offline — no registered user on this device. Connect to the internet to sign in.';
+      deviceBanner.textContent =
+        'Atomic Center is unreachable and this device has no saved user. Sign in once while online to enable offline access.';
+      deviceBanner.className = 'alert alert-error visible';
+      loginBtn.disabled = true;
+    }
+
     async function loadDeviceStatus() {
+      if (window.__AF_LOGIN_BOOT__) {
+        applyDeviceStatus(window.__AF_LOGIN_BOOT__);
+      }
+
       try {
         const res = await fetch('/api/device/status');
         const data = await res.json();
-        const online = data.online === true;
-        const boundUser = data.boundUser?.username;
-
-        if (online) {
-          deviceHint.textContent = boundUser
-            ? `Online — connected to Atomic Center. Any account can sign in. Offline access is for ${boundUser}.`
-            : 'Online — connected to Atomic Center. Sign in with any Atomo Forge account.';
-          deviceBanner.textContent = 'Connected to Atomic Center (AWS). All registered users can sign in.';
-          deviceBanner.className = 'alert alert-success visible';
-          setUsernameLocked(false);
-          setSignupLinkVisible(true);
-          return;
-        }
-
-        setSignupLinkVisible(false);
-
-        if (data.bound && boundUser) {
-          usernameInput.value = boundUser;
-          setUsernameLocked(true);
-          deviceHint.textContent = `Offline — only ${boundUser} can sign in on this device.`;
-          deviceBanner.textContent = `No connection to Atomic Center. Only ${boundUser} can sign in (saved on this device).`;
-          deviceBanner.className = 'alert alert-error visible';
-          return;
-        }
-
-        deviceHint.textContent = 'Offline — no registered user on this device. Connect to the internet to sign in.';
-        deviceBanner.textContent =
-          'Atomic Center is unreachable and this device has no saved user. Sign in once while online to enable offline access.';
-        deviceBanner.className = 'alert alert-error visible';
-        loginBtn.disabled = true;
+        applyDeviceStatus(data);
       } catch {
-        deviceHint.textContent = 'Could not load device status. You can still try to sign in.';
+        if (!window.__AF_LOGIN_BOOT__) {
+          deviceHint.textContent = 'Could not load device status. You can still try to sign in.';
+        }
       }
     }
 

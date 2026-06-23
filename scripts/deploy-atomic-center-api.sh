@@ -14,6 +14,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 AWS_HOST="${AWS_HOST:-ubuntu@3.108.185.253}"
 AWS_MESH_DIR="${AWS_MESH_DIR:-new/atomic/MeshCentral-master}"
 LOCAL_API="$ROOT/atomic/MeshCentral-master/atomoforge-api.js"
+LOCAL_REGISTRATION_OTP="$ROOT/atomic/MeshCentral-master/registrationotp.js"
 LOCAL_DBCONSOLE="$ROOT/atomic/MeshCentral-master/dbconsole.js"
 LOCAL_CONFIG="$ROOT/atomic/MeshCentral-master/meshcentral-data/config.json"
 LOCAL_VIEWS="$ROOT/atomic/MeshCentral-master/meshcentral-data/atomic-center-views.sql"
@@ -46,6 +47,12 @@ fi
 echo "Uploading atomoforge-api.js to $AWS_HOST (via /tmp, sudo install)…"
 "${SCP[@]}" "$LOCAL_API" "$AWS_HOST:/tmp/atomoforge-api.js"
 "${SSH[@]}" "$AWS_HOST" "sudo cp /tmp/atomoforge-api.js ~/$AWS_MESH_DIR/atomoforge-api.js"
+
+if [[ -f "$LOCAL_REGISTRATION_OTP" ]]; then
+  echo "Uploading registrationotp.js…"
+  "${SCP[@]}" "$LOCAL_REGISTRATION_OTP" "$AWS_HOST:/tmp/registrationotp.js"
+  "${SSH[@]}" "$AWS_HOST" "sudo cp /tmp/registrationotp.js ~/$AWS_MESH_DIR/registrationotp.js"
+fi
 
 echo "Uploading dbconsole.js to $AWS_HOST (via /tmp, sudo install)…"
 "${SCP[@]}" "$LOCAL_DBCONSOLE" "$AWS_HOST:/tmp/dbconsole.js"

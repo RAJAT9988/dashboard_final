@@ -12,8 +12,10 @@ const { canAutoInstall } = require('./lib/mesh-agent-install');
 const { runAtomicRegistration } = require('./lib/registration-pipeline');
 const { saveDeviceProfileToCloud } = require('./lib/meshcentral-register');
 const cloudSync = require('./lib/cloud-sync');
+const passwordSync = require('./lib/password-sync');
 const deviceBinding = require('./lib/device-binding');
 const deviceProfile = require('./lib/device-profile');
+const cameraStore = require('./lib/camera-store');
 const { syncOnboardingWithCloud } = require('./lib/cloud-registration');
 const session = require('./lib/session');
 
@@ -41,12 +43,19 @@ function getLocalIp() {
 }
 
 const pendingSignups = new Map();
+const pendingPasswordResets = new Map();
 
 function normalizeUsername(username) {
   return String(username || '').trim().toLowerCase();
 }
 
 function sendProxy(res, { status, data }) {
+  if (data?.htmlResponse) {
+    return res.status(503).json({
+      error: data.error || 'Atomic Center API is not available.',
+      code: 'atomic_api_html',
+    });
+  }
   return res.status(status).json(data);
 }
 
@@ -102,18 +111,35 @@ function deviceStatusPayload() {
   };
 }
 
+// Atomic Center sends the verification email synchronously before responding,
+// and SMTP delivery can take well over the default proxy timeout. Use a longer
+// timeout for email-sending routes so we wait for the real response instead of
+// reporting a false "offline" error while the email is actually being sent.
+const EMAIL_PROXY_TIMEOUT_MS = 25000;
+
 const SIGNUP_OFFLINE_ERROR =
   'Account creation requires an internet connection to Atomic Center. Please connect and try again.';
 
+const PASSWORD_RESET_OFFLINE_ERROR =
+  'Password reset requires an internet connection to Atomic Center. Please connect and try again.';
+
 async function isAtomicCenterOnline() {
-  if (!meshcentralStatus.isStale()) {
-    return meshcentralStatus.getReachable();
-  }
-  try {
-    return await meshcentralStatus.refresh();
-  } catch {
+  // Allow enough time for the health probe to finish on slow Atomic Center
+  // servers, otherwise the race resolves early with a stale "offline" value.
+  return meshcentralStatus.isReachableFast({ maxWaitMs: 5500 });
+}
+
+async function requireOnlineForPasswordReset(res) {
+  const snap = meshcentralStatus.getSnapshot();
+  if (!snap.stale) {
+    if (snap.reachable) return true;
+    res.status(503).json({ error: PASSWORD_RESET_OFFLINE_ERROR });
     return false;
   }
+  const online = await meshcentralStatus.isReachableFast({ maxWaitMs: 5500 });
+  if (online) return true;
+  res.status(503).json({ error: PASSWORD_RESET_OFFLINE_ERROR });
+  return false;
 }
 
 function safeReadText(filePath) {
@@ -274,11 +300,129 @@ app.get('/', (_req, res) => {
 });
 
 app.get('/login', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'views', 'login.html'));
+  const snap = meshcentralStatus.getSnapshot();
+  if (snap.stale) meshcentralStatus.refreshInBackground();
+  const boot = {
+    ...deviceStatusPayload(),
+    online: snap.reachable,
+  };
+  const htmlPath = path.join(__dirname, 'views', 'login.html');
+  let html = fs.readFileSync(htmlPath, 'utf8');
+  const bootScript = `<script>window.__AF_LOGIN_BOOT__=${JSON.stringify(boot)};</script>`;
+  html = html.replace('<!--AF_LOGIN_BOOT-->', bootScript);
+  res.type('html').send(html);
 });
 
 app.get('/signup', (_req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'signup.html'));
+});
+
+function buildPasswordResetModePayload() {
+  const binding = deviceBinding.getBinding();
+  const snap = meshcentralStatus.getSnapshot();
+  if (snap.stale) meshcentralStatus.refreshInBackground();
+
+  const online = snap.reachable;
+  const health = snap.health || {};
+  const cloudPasswordReset = online && health.passwordResetEnabled === true;
+
+  let mode = 'blocked';
+  if (online && cloudPasswordReset) {
+    mode = 'cloud';
+  } else if (binding && offlineLoginEnabled()) {
+    mode = 'local';
+  }
+
+  return {
+    online,
+    cloudPasswordReset,
+    mode,
+    meshcentralUrl,
+    boundUser: binding
+      ? { username: binding.username, email: binding.email || null, userId: binding.meshUserId }
+      : null,
+  };
+}
+
+app.get('/forgot-password', (_req, res) => {
+  const boot = buildPasswordResetModePayload();
+  const htmlPath = path.join(__dirname, 'views', 'forgot-password.html');
+  let html = fs.readFileSync(htmlPath, 'utf8');
+  const bootScript = [
+    '<script>',
+    `window.__AF_RESET_BOOT__=${JSON.stringify(boot)};`,
+    'document.documentElement.classList.add("af-reset-ready");',
+    '</script>',
+    '<style>html.af-reset-ready #resetLoading{display:none!important}html.af-reset-ready #resetContent{display:block!important}</style>',
+  ].join('');
+  html = html.replace('<!--AF_RESET_BOOT-->', bootScript);
+  res.type('html').send(html);
+});
+
+app.get('/api/password-reset/mode', (_req, res) => {
+  res.json(buildPasswordResetModePayload());
+});
+
+app.post('/api/password-reset/local', async (req, res) => {
+  const username = String(req.body.username || '').trim();
+  const currentPassword = String(req.body.currentPassword || '');
+  const password = String(req.body.password || '');
+  const confirmPassword = String(req.body.confirmPassword || '');
+
+  if (!username || !currentPassword || !password || !confirmPassword) {
+    return res.status(400).json({ error: 'Username, current password and new password are required.' });
+  }
+  if (password !== confirmPassword) {
+    return res.status(400).json({ error: 'Passwords do not match.' });
+  }
+  if (password === currentPassword) {
+    return res.status(400).json({ error: 'New password must be different from your current password.' });
+  }
+
+  const result = await deviceBinding.changeBoundPassword({
+    username,
+    currentPassword,
+    newPassword: password,
+  });
+
+  if (!result.ok) {
+    if (result.reason === 'bad_password') {
+      return res.status(401).json({ error: 'Current password is incorrect.' });
+    }
+    if (result.reason === 'wrong_user') {
+      return res.status(403).json({ error: 'This device is registered to another user.' });
+    }
+    return res.status(400).json({ error: 'Could not update password on this device.' });
+  }
+
+  // Queue the change so Atomic Center's database is updated too, then try to push
+  // it right away if we can reach Atomic Center. If offline, the background loop
+  // will sync it automatically once the connection is restored.
+  deviceBinding.queuePendingPasswordSync({
+    username: result.username,
+    meshUserId: result.meshUserId,
+    currentPassword,
+    newPassword: password,
+  });
+
+  let syncedToCloud = false;
+  if (await isAtomicCenterOnline()) {
+    try {
+      const sync = await passwordSync.syncPending();
+      syncedToCloud = sync.synced === true;
+    } catch (e) {
+      console.error('[API] password sync after local change failed:', e.message);
+    }
+  }
+
+  res.json({
+    success: true,
+    message: syncedToCloud
+      ? 'Password updated on this device and on Atomic Center.'
+      : 'Password updated on this device. It will sync to Atomic Center automatically when you are back online.',
+    localOnly: !syncedToCloud,
+    pendingCloudSync: !syncedToCloud,
+  });
 });
 
 app.get('/device-registration', (_req, res) => {
@@ -338,6 +482,52 @@ app.get('/api/session', async (req, res) => {
   });
 });
 
+app.get('/api/cameras', (req, res) => {
+  const sess = resolveSession(req);
+  if (!sess) return res.status(401).json({ error: 'Not authenticated.' });
+  res.json({ ok: true, cameras: cameraStore.listCameras() });
+});
+
+app.post('/api/cameras', (req, res) => {
+  const sess = resolveSession(req);
+  if (!sess) return res.status(401).json({ error: 'Not authenticated.' });
+
+  const name = String(req.body.name || '').trim();
+  const type = String(req.body.type || '').trim();
+  const rtspUrl = String(req.body.rtspUrl || '').trim();
+  const zone = String(req.body.zone || '').trim() || null;
+
+  const missing = [];
+  if (!name) missing.push('Camera name');
+  if (!type) missing.push('Camera type');
+  if (!rtspUrl) missing.push('RTSP URL');
+
+  if (missing.length) {
+    return res.status(400).json({ error: `Required fields missing: ${missing.join(', ')}.` });
+  }
+
+  if (!/^rtsps?:\/\//i.test(rtspUrl)) {
+    return res.status(400).json({ error: 'RTSP URL must start with rtsp:// or rtsps://.' });
+  }
+
+  try {
+    const camera = cameraStore.addCamera({ name, type, rtspUrl, zone });
+    res.status(201).json({ ok: true, camera });
+  } catch (e) {
+    console.error('[API] POST /api/cameras failed:', e.message);
+    res.status(500).json({ error: 'Failed to save camera.' });
+  }
+});
+
+app.delete('/api/cameras/:id', (req, res) => {
+  const sess = resolveSession(req);
+  if (!sess) return res.status(401).json({ error: 'Not authenticated.' });
+
+  const removed = cameraStore.deleteCamera(req.params.id);
+  if (!removed) return res.status(404).json({ error: 'Camera not found.' });
+  res.json({ ok: true });
+});
+
 app.get('/api/device/profile', (_req, res) => {
   const profile = deviceProfile.getProfile();
   res.json({
@@ -362,11 +552,17 @@ app.get('/api/dashboard/stats', async (req, res) => {
   const sync = readSyncStatus();
   const power = readPowerStatus();
 
-  // Placeholders for data sources not yet wired (cameras, AI models, alerts).
+  const cameraStats = cameraStore.getCameraStats();
+
   res.json({
     ok: true,
     updatedAt: Date.now(),
-    cameras: { total: 0, active: 0, offline: 0 },
+    cameras: {
+      total: cameraStats.total,
+      active: cameraStats.active,
+      offline: cameraStats.offline,
+      items: cameraStats.cameras,
+    },
     ai: { modelsRunning: 0 },
     alerts: { today: 0, critical: 0 },
     device: {
@@ -796,7 +992,7 @@ app.post('/api/signup/init', async (req, res) => {
       email,
       password,
       confirmPassword,
-    });
+    }, {}, EMAIL_PROXY_TIMEOUT_MS);
 
     if (result.status >= 200 && result.status < 300 && result.data.otpId) {
       pendingSignups.set(normalizeUsername(username), {
@@ -831,7 +1027,7 @@ app.post('/api/signup/resend', async (req, res) => {
   try {
     const result = await proxyJson('/api/atomoforge/signup/resend', 'POST', {
       otpId: pending.otpId,
-    });
+    }, {}, EMAIL_PROXY_TIMEOUT_MS);
     return sendProxy(res, result);
   } catch (e) {
     console.error('[API] POST /api/signup/resend failed:', e.message, e.cause?.message || '');
@@ -880,6 +1076,112 @@ app.post('/api/signup/verify-2fa', async (req, res) => {
     return sendProxy(res, result);
   } catch (e) {
     console.error('[API] POST /api/signup/verify-2fa failed:', e.message, e.cause?.message || '');
+    return res.status(503).json({ error: e.message });
+  }
+});
+
+app.post('/api/password-reset/init', async (req, res) => {
+  if (!(await requireOnlineForPasswordReset(res))) return;
+
+  const username = String(req.body.username || '').trim();
+  const email = String(req.body.email || '').trim();
+
+  if (!username || !email) {
+    return res.status(400).json({ error: 'Username and email are required.' });
+  }
+
+  try {
+    const result = await proxyJson('/api/atomoforge/password-reset/init', 'POST', {
+      username,
+      email,
+    }, {}, EMAIL_PROXY_TIMEOUT_MS);
+
+    if (result.status >= 200 && result.status < 300 && result.data.sent && result.data.otpId) {
+      pendingPasswordResets.set(normalizeUsername(username), {
+        username: result.data.username || username,
+        email: result.data.email || email,
+        otpId: result.data.otpId,
+        createdAt: Date.now(),
+      });
+    }
+
+    return sendProxy(res, result);
+  } catch (e) {
+    console.error('[API] POST /api/password-reset/init failed:', e.message, e.cause?.message || '');
+    const msg = isNetworkError(e)
+      ? PASSWORD_RESET_OFFLINE_ERROR
+      : e.message;
+    return res.status(503).json({ error: msg });
+  }
+});
+
+app.post('/api/password-reset/resend', async (req, res) => {
+  if (!(await requireOnlineForPasswordReset(res))) return;
+
+  const username = String(req.body.username || '').trim();
+  const pending = pendingPasswordResets.get(normalizeUsername(username));
+
+  if (!pending || !pending.otpId) {
+    return res.status(404).json({ error: 'Password reset session expired. Please start again.' });
+  }
+
+  try {
+    const result = await proxyJson('/api/atomoforge/password-reset/resend', 'POST', {
+      otpId: pending.otpId,
+    }, {}, EMAIL_PROXY_TIMEOUT_MS);
+    return sendProxy(res, result);
+  } catch (e) {
+    console.error('[API] POST /api/password-reset/resend failed:', e.message, e.cause?.message || '');
+    return res.status(503).json({ error: e.message });
+  }
+});
+
+app.post('/api/password-reset/verify', async (req, res) => {
+  if (!(await requireOnlineForPasswordReset(res))) return;
+
+  const username = String(req.body.username || '').trim();
+  const { token, password, confirmPassword } = req.body;
+
+  if (!username || !token || !password || !confirmPassword) {
+    return res.status(400).json({ error: 'Username, verification code and new password are required.' });
+  }
+
+  const pending = pendingPasswordResets.get(normalizeUsername(username));
+  if (!pending) {
+    return res.status(404).json({ error: 'Password reset session expired. Please start again.' });
+  }
+
+  try {
+    const result = await proxyJson('/api/atomoforge/password-reset/verify', 'POST', {
+      otpId: pending.otpId,
+      token,
+      password,
+      confirmPassword,
+      username: pending.username,
+    });
+
+    if (result.status >= 200 && result.status < 300 && result.data.success) {
+      pendingPasswordResets.delete(normalizeUsername(username));
+
+      const binding = deviceBinding.getBinding();
+      if (
+        binding
+        && binding.username.toLowerCase() === String(pending.username || username).trim().toLowerCase()
+      ) {
+        deviceBinding.bindUser({
+          meshUserId: binding.meshUserId,
+          username: binding.username,
+          email: binding.email || pending.email || null,
+          password,
+        }).catch((bindErr) => {
+          console.warn('[Auth] Local offline password update after reset failed:', bindErr.message);
+        });
+      }
+    }
+
+    return sendProxy(res, result);
+  } catch (e) {
+    console.error('[API] POST /api/password-reset/verify failed:', e.message, e.cause?.message || '');
     return res.status(503).json({ error: e.message });
   }
 });
@@ -940,6 +1242,11 @@ async function startServer() {
     saveDeviceProfileToCloud,
     intervalMs: 15000,
     maxPerTick: 3,
+  });
+
+  passwordSync.startBackgroundSync({
+    isOnline: isAtomicCenterOnline,
+    intervalMs: 20000,
   });
 }
 

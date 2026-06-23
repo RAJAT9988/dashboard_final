@@ -312,6 +312,26 @@ body {
   text-decoration: underline;
 }
 
+.auth-inline-link {
+  margin: -0.35rem 0 0.85rem;
+  text-align: right;
+  font-size: 0.84rem;
+}
+
+.auth-inline-link a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.auth-inline-link a:hover {
+  text-decoration: underline;
+}
+
+.auth-inline-link a.hidden {
+  display: none;
+}
+
 .alert {
   padding: 0.75rem 1rem;
   border-radius: 8px;
@@ -344,6 +364,166 @@ body {
 
 .alert.hidden {
   display: none;
+}
+
+.is-hidden,
+.hidden {
+  display: none !important;
+}
+
+.reset-loading {
+  text-align: center;
+  padding: 2rem 0 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.reset-step-heading {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin: 0 0 1rem;
+}
+
+.reset-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.reset-actions-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.reset-mode-switch {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
+.reset-mode-switch a {
+  color: var(--primary);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.reset-mode-switch a:hover {
+  text-decoration: underline;
+}
+
+.reset-blocked-copy {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0.5rem 0 1rem;
+}
+
+.auth-body-reset {
+  overflow-x: hidden;
+  overflow-y: auto;
+  align-items: flex-start;
+  padding: 2rem 1.25rem 3rem;
+  min-height: 100vh;
+}
+
+.auth-card-reset {
+  margin: auto 0;
+}
+
+.auth-header-compact {
+  margin-bottom: 1rem;
+}
+
+.auth-header-compact .logo.logo-brand {
+  margin-bottom: 0.35rem;
+}
+
+.auth-header-compact .logo-img {
+  width: 56px;
+}
+
+.auth-header-compact h1 {
+  font-size: 1.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.auth-header-compact p {
+  font-size: 0.84rem;
+}
+
+.reset-step-desc {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: -0.35rem 0 1.15rem;
+  line-height: 1.55;
+}
+
+.reset-step-desc strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.reset-connection-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--success);
+  background: rgba(40, 167, 69, 0.1);
+  border: 1px solid rgba(40, 167, 69, 0.28);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.reset-connection-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.reset-feedback {
+  font-size: 0.84rem;
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  line-height: 1.45;
+}
+
+.reset-feedback.is-error {
+  background: rgba(220, 53, 69, 0.12);
+  border: 1px solid rgba(220, 53, 69, 0.35);
+  color: #f8a5ae;
+}
+
+.reset-feedback.is-success {
+  background: rgba(40, 167, 69, 0.1);
+  border: 1px solid rgba(40, 167, 69, 0.28);
+  color: #86efac;
+}
+
+.reset-panel-step2 .reset-step-heading {
+  margin-bottom: 0.35rem;
+}
+
+.reset-panel-step2 .step-indicator {
+  margin-bottom: 1rem;
+}
+
+.reset-actions-row .btn-secondary {
+  margin-top: 0;
 }
 
 .twofa-hint {
@@ -388,9 +568,14 @@ body {
 
 .token-input {
   text-align: center;
-  font-size: 1.25rem;
-  letter-spacing: 0.5rem;
+  font-size: 1.125rem;
+  letter-spacing: 0.28em;
   font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.token-input::placeholder {
+  letter-spacing: 0.2em;
+  opacity: 0.45;
 }
 
 .step-indicator {
